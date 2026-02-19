@@ -1,0 +1,18 @@
+# Backtesting Configuration
+backtesting:
+  defaultConfig:
+    startDate: "2024-01-01"
+    endDate: "2024-12-31"
+    initialCapital: 10000
+    commission: 0.001 # 0.1% per trade
+    slippage: 0.001 # 0.1% slippage
+    fillModel: "next_bar"
+    dataSource: "files"
+    replaySpeed: 1.0
+    warmupBars: 50
+
+  replaySpeeds:
+    - 1 # Real-time
+    - 10 # 10x faster
+    - 100 # 100x faster
+    - 0 # Unlimited

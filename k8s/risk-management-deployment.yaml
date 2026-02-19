@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-agent-risk
+  labels:
+    app: trading-agent-risk
+    component: risk-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trading-agent-risk
+  template:
+    metadata:
+      labels:
+        app: trading-agent-risk
+        component: risk-management
+    spec:
+      containers:
+        - name: trading-agent
+          image: trading-agent:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: trading-agent-config
+                  key: db-host
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "trading_db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: trading-agent-secrets
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trading-agent-secrets
+                  key: db-password
+            - name: RISK_CONFIG_PATH
+              value: "/config/risk-config.yaml"
+          volumeMounts:
+            - name: risk-config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: risk-config
+          configMap:
+            name: risk-management-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-agent-risk
+spec:
+  selector:
+    app: trading-agent-risk
+  ports:
+    - port: 3000
+      targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: risk-management-config
+data:
+  risk-config.yaml: |
+    position_sizing:
+      type: fixed_fractional
+      max_position_pct: 0.10
+      risk_per_trade: 0.02
+    portfolio_controls:
+      max_sector_exposure: 0.30
+      max_portfolio_heat: 0.50
+    circuit_breakers:
+      daily_loss_limit: 10.0
+      consecutive_losses: 3
+    stop_management:
+      type: trailing
+      atr_multiplier: 2.0

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stock-agent-config
+  namespace: stock-agent
+data:
+  # Exchange Adapter Configuration
+  EXCHANGE_ADAPTER_DEFAULT: "alpaca"
+  EXCHANGE_ADAPTER_ALPACA_PAPER: "true"
+  EXCHANGE_ADAPTER_ALPACA_REST_URL: "https://paper-api.alpaca.markets"
+  EXCHANGE_ADAPTER_ALPACA_WEBSOCKET_URL: "wss://stream.data.sandbox.alpaca.markets/v2/iex"
+
+  # Data Pipeline Configuration
+  PIPELINE_AUTO_RECONNECT: "true"
+  PIPELINE_RECONNECT_STRATEGY: "exponential"
+  PIPELINE_MAX_RECONNECT_DELAY: "30000"
+  PIPELINE_BASE_RECONNECT_DELAY: "1000"
+  PIPELINE_MAX_RECONNECT_ATTEMPTS: "5"
+  PIPELINE_BUFFER_SIZE: "1000"
+  PIPELINE_HEARTBEAT_INTERVAL: "30000"
+  PIPELINE_HEARTBEAT_TIMEOUT: "10000"
+  PIPELINE_BATCH_INTERVAL: "100"
+
+  # Database Configuration
+  DATABASE_HOST: "postgres"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "stockagent"
+
+  # Logging
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stock-agent-data
+  namespace: stock-agent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # Uncomment and specify storage class for your cluster
+  # storageClassName: standard

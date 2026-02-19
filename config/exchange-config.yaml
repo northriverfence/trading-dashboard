@@ -1,0 +1,20 @@
+# Exchange Adapter Configuration
+exchange:
+  default: alpaca
+
+  adapters:
+    alpaca:
+      apiKey: "${ALPACA_API_KEY}"
+      secretKey: "${ALPACA_SECRET_KEY}"
+      paper: true
+      restUrl: "https://paper-api.alpaca.markets"
+      websocketUrl: "wss://stream.data.alpaca.markets/v2/iex"
+
+    interactive_brokers:
+      host: "127.0.0.1"
+      port: 7497
+      clientId: 1
+
+    historical:
+      dataPath: "./data/historical"
+      replaySpeed: 1.0

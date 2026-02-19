@@ -1,0 +1,15 @@
+# Data Pipeline Configuration
+pipeline:
+  autoReconnect: true
+  reconnectStrategy: exponential
+  maxReconnectDelay: 60000
+  baseReconnectDelay: 1000
+  maxReconnectAttempts: 10
+  bufferSize: 1000
+  heartbeatInterval: 30000
+  heartbeatTimeout: 10000
+  batchInterval: 100
+
+  subscriptions:
+    - symbols: ["AAPL", "MSFT", "GOOGL"]
+      channels: ["trades", "quotes"]

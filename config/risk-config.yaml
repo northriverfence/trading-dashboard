@@ -1,0 +1,32 @@
+# Risk Management Configuration
+
+# Position Sizing Module
+position_sizing:
+  type: fixed_fractional # Options: fixed_fractional, kelly, volatility_adjusted, atr
+  max_position_pct: 0.10 # Max 10% per position
+  kelly_fraction: 0.5 # Half-Kelly for safety
+  risk_per_trade: 0.02 # Risk 2% per trade
+  atr_period: 14
+  atr_multiplier: 2.0
+
+# Portfolio Controls Module
+portfolio_controls:
+  max_sector_exposure: 0.30 # Max 30% per sector
+  max_portfolio_heat: 0.50 # Max 50% total at risk
+  max_correlation: 0.70 # Reject if correlation > 0.7
+  concentration_limit: 1.5 # Max 1.5x largest position
+
+# Circuit Breakers Module
+circuit_breakers:
+  daily_loss_limit: 10.0 # $10 daily loss limit
+  consecutive_losses: 3 # Stop after 3 consecutive losses
+  drawdown_thresholds: [5, 10, 15] # % drawdowns for reduction
+  volatility_threshold: 2.0 # ATR multiplier threshold
+
+# Stop Management Module
+stop_management:
+  type: trailing # Options: trailing, atr, volatility, time
+  atr_multiplier: 2.0
+  trailing_activation: 1.02 # Start trailing at +2%
+  trailing_distance: 0.02 # 2% trail
+  time_limit: 3600 # 1 hour max hold time
