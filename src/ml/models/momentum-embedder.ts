@@ -38,7 +38,7 @@ export class MomentumEmbedder implements EmbeddingModel {
       new Date(trade.timestamp).getDay() / 7,
 
       // Confidence
-      trade.confidence ?? 0.5,
+      (trade as any).confidence ?? 0.5,
 
       // Strategy encoding (one-hot for trend_following)
       0, // breakout
