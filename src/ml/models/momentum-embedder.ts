@@ -109,30 +109,30 @@ export class MomentumEmbedder implements EmbeddingModel {
     // Approximate RSI slope based on entry price and market condition
     const baseRsi = trade.marketCondition === "bullish" ? 60 : trade.marketCondition === "bearish" ? 40 : 50;
     const momentum = (trade.takeProfit ?? trade.entryPrice * 1.05) / trade.entryPrice;
-    return (momentum - 1) * 100; // Positive slope for bullish momentum
+    return (momentum - 1) * 10; // Positive slope for bullish momentum, normalized
   }
 
   private calculateMACD(trade: TradeMemory): number {
     // MACD histogram approximation
     const target = trade.takeProfit ?? trade.entryPrice * 1.05;
     const momentum = Math.abs(target - trade.entryPrice) / trade.entryPrice;
-    return trade.side === "buy" ? momentum * 10 : -momentum * 10;
+    return trade.side === "buy" ? momentum : -momentum; // Normalized to -1 to 1
   }
 
   private calculateADX(trade: TradeMemory): number {
-    // Trend strength approximation (ADX ranges 0-100)
+    // Trend strength approximation (ADX ranges 0-100, normalized to 0-1)
     const target = trade.takeProfit ?? trade.entryPrice * 1.05;
     const stop = trade.stopLoss ?? trade.entryPrice * 0.96;
     const riskReward = Math.abs(target - trade.entryPrice) / Math.abs(trade.entryPrice - stop);
-    // Higher ADX for strong trends with good risk/reward
-    return Math.min(25 + riskReward * 15, 75);
+    // Higher ADX for strong trends with good risk/reward, normalized
+    return Math.min((25 + riskReward * 15) / 100, 1);
   }
 
   private calculateMomentum(trade: TradeMemory): number {
     // Price momentum based on expected move
     const target = trade.takeProfit ?? trade.entryPrice * 1.05;
     const momentum = Math.abs(target - trade.entryPrice) / trade.entryPrice;
-    return trade.side === "buy" ? momentum * 100 : -momentum * 100;
+    return trade.side === "buy" ? momentum : -momentum; // Normalized to -1 to 1
   }
 
   private calculateTrendStrength(trade: TradeMemory): number {
@@ -150,7 +150,7 @@ export class MomentumEmbedder implements EmbeddingModel {
     const target = trade.takeProfit ?? trade.entryPrice * 1.05;
     const risk = Math.abs(trade.entryPrice - stop);
     const reward = Math.abs(target - trade.entryPrice);
-    return risk > 0 ? reward / risk : 3;
+    return risk > 0 ? Math.min(reward / risk, 10) : 3; // Cap at 10
   }
 
   private estimateStopDistance(trade: TradeMemory): number {
