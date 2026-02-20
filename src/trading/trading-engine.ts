@@ -10,6 +10,7 @@ export class TradingEngine {
   private orderManager: OrderManager;
   private portfolioTracker: PortfolioTracker;
   private config: TradingEngineConfig;
+  private quoteOverrides: Map<string, Quote> = new Map();
 
   constructor(config: TradingEngineConfig) {
     this.config = config;
@@ -90,6 +91,12 @@ export class TradingEngine {
   }
 
   async getQuote(symbol: string): Promise<Quote> {
+    // Check for quote override first (used in backtesting)
+    const override = this.quoteOverrides.get(symbol);
+    if (override) {
+      return override;
+    }
+
     const basePrice = 150 + Math.random() * 50;
     const spread = 0.02;
 
@@ -105,5 +112,13 @@ export class TradingEngine {
 
   updateMarketPrices(prices: Record<string, number>): void {
     this.portfolioTracker.updatePrices(prices);
+  }
+
+  setQuoteOverride(symbol: string, quote: Quote): void {
+    this.quoteOverrides.set(symbol, quote);
+  }
+
+  clearQuoteOverrides(): void {
+    this.quoteOverrides.clear();
   }
 }
