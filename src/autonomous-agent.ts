@@ -14,6 +14,9 @@ import { TradeLearningSystem } from "./learning-system.js";
 import { RiskOrchestrator } from "./risk/orchestrator.js";
 import { loadRiskConfig } from "./risk/config.js";
 import type { TradeRequest, Portfolio } from "./risk/types.js";
+import { TradeValidator } from "./validation/trade-validator.js";
+import { IntelligentStrategySelector } from "./strategies/intelligent-selector.js";
+import type { MarketCondition } from "./strategies/intelligent-selector.js";
 
 interface MarketHours {
   isOpen: boolean;
@@ -50,6 +53,8 @@ export class AutonomousTradingAgent {
   private tradingDB: TradingAgentDB;
   private tradeJournal: TradeLearningSystem;
   private riskOrchestrator: RiskOrchestrator;
+  private tradeValidator!: TradeValidator;
+  private strategySelector!: IntelligentStrategySelector;
 
   private readonly MAX_CONSECUTIVE_ERRORS = 5;
   private readonly ERROR_COOLDOWN_MS = 60000;
@@ -64,6 +69,8 @@ export class AutonomousTradingAgent {
     this.tradingDB = new TradingAgentDB();
     this.tradeJournal = new TradeLearningSystem();
     this.riskOrchestrator = new RiskOrchestrator(loadRiskConfig());
+    this.tradeValidator = new TradeValidator();
+    this.strategySelector = new IntelligentStrategySelector();
     this.state = this.loadState();
   }
 
@@ -237,8 +244,8 @@ export class AutonomousTradingAgent {
       }
 
       for (const opp of opportunities.slice(0, 3)) {
-        const similarTrade = await this.tradingDB.findSimilarTrades({
-          id: `query_${Date.now()}`,
+        // NEW: Validate trade with AgentDB
+        const validation = await this.tradeValidator.validateTrade({
           symbol: opp.symbol,
           side: "buy",
           entryPrice: opp.price,
@@ -248,19 +255,19 @@ export class AutonomousTradingAgent {
           strategy: this.state.currentStrategy,
           marketCondition: this.state.marketCondition as "bullish" | "bearish" | "neutral",
           reasoning: opp.reasoning,
-          mistakes: [],
-          lessons: [],
-          timestamp: Date.now(),
         });
 
-        if (similarTrade.length > 0) {
-          const winRate = similarTrade.filter((t: TradeMemory) => t.outcome === "win").length / similarTrade.length;
-          console.log(`${opp.symbol}: Historical win rate ${(winRate * 100).toFixed(0)}%`);
-        }
-      }
+        console.log(`Validation for ${opp.symbol}: ${validation.recommendation} (${validation.reasoning})`);
 
-      if (opportunities[0] && this.shouldExecuteTrade(opportunities[0])) {
-        await this.executeTrade(opportunities[0]);
+        if (validation.recommendation === "avoid") {
+          console.log(`Skipping ${opp.symbol} due to poor historical performance`);
+          continue;
+        }
+
+        // Modified: Pass validation to shouldExecuteTrade
+        if (await this.shouldExecuteTrade(opp, validation)) {
+          await this.executeTrade(opp);
+        }
       }
 
       if (this.state.consecutiveErrors > 0) {
@@ -319,30 +326,52 @@ export class AutonomousTradingAgent {
 
   private async adaptStrategy(): Promise<void> {
     try {
-      const winningPatterns = await this.tradingDB.getWinningPatterns(0.3, 0.5);
+      // Get current market condition
+      const marketCondition = this.detectMarketCondition();
 
-      if (winningPatterns.length > 0) {
-        const bestPattern = winningPatterns[0];
-        if (!bestPattern) return;
+      // NEW: Use intelligent strategy selection
+      const recommendation = await this.strategySelector.selectStrategy(marketCondition);
 
-        const [strategy, condition] = bestPattern.pattern.split("_");
+      if (recommendation.strategy !== this.state.currentStrategy) {
+        console.log(`Strategy adapted: ${this.state.currentStrategy} -> ${recommendation.strategy}`);
+        console.log(`   Reason: ${recommendation.reasoning}`);
+        this.state.currentStrategy = recommendation.strategy;
+      }
 
-        if (strategy && strategy !== this.state.currentStrategy) {
-          console.log(`Adapting strategy: ${this.state.currentStrategy} → ${strategy}`);
-          this.state.currentStrategy = strategy;
-        }
+      if (recommendation.confidence < 0.3) {
+        console.log(`Low strategy confidence (${recommendation.confidence.toFixed(2)}). Reducing position sizes.`);
+      }
 
-        if (condition && condition !== this.state.marketCondition) {
-          console.log(`Market condition updated: ${this.state.marketCondition} → ${condition}`);
-          this.state.marketCondition = condition;
-        }
+      // Update market condition
+      if (marketCondition.condition !== this.state.marketCondition) {
+        console.log(`Market condition: ${this.state.marketCondition} -> ${marketCondition.condition}`);
+        this.state.marketCondition = marketCondition.condition;
       }
     } catch (error) {
       console.error("Strategy adaptation failed:", error);
     }
   }
 
-  private shouldExecuteTrade(opportunity: TradeOpportunity): boolean {
+  private detectMarketCondition(): MarketCondition {
+    // Placeholder - would use actual market indicators
+    // For now, return based on time or simple logic
+    const hour = new Date().getHours();
+
+    return {
+      condition: hour < 12 ? "bullish" : "neutral",
+      indicators: {
+        rsi: 50,
+        trend: "sideways",
+        volatility: 0.15,
+      },
+    };
+  }
+
+  private async shouldExecuteTrade(
+    opportunity: TradeOpportunity,
+    validation?: { recommendation: string; reasoning: string },
+  ): Promise<boolean> {
+    // Check existing limits
     if (this.state.totalTradesToday >= 5) {
       console.log("Daily trade limit reached");
       return false;
@@ -355,6 +384,12 @@ export class AutonomousTradingAgent {
 
     if (opportunity.confidence < 0.6) {
       console.log(`Confidence too low (${(opportunity.confidence * 100).toFixed(0)}%)`);
+      return false;
+    }
+
+    // Check AgentDB validation
+    if (validation?.recommendation === "avoid") {
+      console.log(`Trade validation failed: ${validation.reasoning}`);
       return false;
     }
 

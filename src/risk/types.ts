@@ -67,7 +67,7 @@ export interface StopLevel {
 export interface RiskCheck {
   id: string;
   timestamp: Date;
-  type: "sizing" | "portfolio" | "circuit_breaker" | "stop";
+  type: "sizing" | "portfolio" | "circuit_breaker" | "stop" | "dynamic_risk";
   symbol?: string;
   passed: boolean;
   details: Record<string, unknown>;

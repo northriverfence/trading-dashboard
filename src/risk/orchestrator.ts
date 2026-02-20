@@ -25,6 +25,7 @@ import { DrawdownReducer } from "./breakers/drawdown-reducer.js";
 import { VolatilityBreaker } from "./breakers/volatility-breaker.js";
 import { TrailingStopEngine } from "./stops/trailing-stop-engine.js";
 import { RiskDatabase } from "./database.js";
+import { DynamicRiskAdjuster, type RiskAdjustment } from "./dynamic-risk-adjuster.js";
 
 export interface RiskValidationResult {
   approved: boolean;
@@ -32,6 +33,7 @@ export interface RiskValidationResult {
   shares: number;
   stopLevel?: StopLevel;
   reductionFactor?: number;
+  riskAdjustment?: RiskAdjustment;
 }
 
 export class RiskOrchestrator {
@@ -54,6 +56,7 @@ export class RiskOrchestrator {
 
   // Stop Management
   private trailingStop: TrailingStopEngine;
+  private riskAdjuster!: DynamicRiskAdjuster;
 
   constructor(config: RiskConfig, database?: RiskDatabase) {
     this.config = config;
@@ -69,6 +72,7 @@ export class RiskOrchestrator {
     this.drawdownReducer = new DrawdownReducer(config);
     this.volatilityBreaker = new VolatilityBreaker(config);
     this.trailingStop = new TrailingStopEngine(config);
+    this.riskAdjuster = new DynamicRiskAdjuster();
   }
 
   /**
@@ -136,11 +140,75 @@ export class RiskOrchestrator {
       stopLevel,
     });
 
+    // NEW: Dynamic risk adjustment from AgentDB
+    let riskAdjustment: RiskAdjustment;
+    try {
+      const baseStopLoss = request.stopLoss ?? stopLevel.stopPrice;
+      const baseTakeProfit = request.takeProfit ?? request.entryPrice * 1.04;
+
+      riskAdjustment = await this.riskAdjuster.adjustRisk({
+        ...request,
+        shares: sizingResult.shares,
+        stopLoss: baseStopLoss,
+        takeProfit: baseTakeProfit,
+      });
+    } catch (error) {
+      console.error("Dynamic risk adjustment failed:", error);
+      // Fallback to neutral adjustment
+      riskAdjustment = {
+        positionSizeMultiplier: 1.0,
+        stopLossMultiplier: 1.0,
+        confidence: 0,
+        reasoning: "Risk adjustment service unavailable - using defaults",
+      };
+    }
+
+    if (riskAdjustment.positionSizeMultiplier < 0.1) {
+      await this.logRiskCheck("dynamic_risk", request.symbol, false, { riskAdjustment });
+      return {
+        approved: false,
+        reason: `Dynamic risk check failed: ${riskAdjustment.reasoning}`,
+        shares: 0,
+      };
+    }
+
+    // Apply dynamic adjustment to position sizing
+    const adjustedShares = Math.floor(sizingResult.shares * riskAdjustment.positionSizeMultiplier);
+
+    if (adjustedShares < 1) {
+      return {
+        approved: false,
+        reason: `Position size too small after risk adjustment (${riskAdjustment.positionSizeMultiplier}x)`,
+        shares: 0,
+      };
+    }
+
+    const adjustedStopPrice = (request.stopLoss ?? stopLevel.stopPrice) * riskAdjustment.stopLossMultiplier;
+
+    console.log(`Risk adjustment: ${riskAdjustment.reasoning}`);
+    console.log(
+      `Position size: ${sizingResult.shares} -> ${adjustedShares} (${riskAdjustment.positionSizeMultiplier}x)`,
+    );
+
+    // Update log with adjusted values
+    await this.logRiskCheck("sizing", request.symbol, true, {
+      sizingResult,
+      portfolioChecks,
+      stopLevel,
+      riskAdjustment,
+      adjustedShares,
+      adjustedStopPrice,
+    });
+
     return {
       approved: true,
-      shares: sizingResult.shares,
-      stopLevel,
+      shares: adjustedShares,
+      stopLevel: {
+        ...stopLevel,
+        stopPrice: adjustedStopPrice,
+      },
       reductionFactor: breakerResult.reductionFactor,
+      riskAdjustment,
     };
   }
 
@@ -181,7 +249,7 @@ export class RiskOrchestrator {
    * Log risk check to database
    */
   private async logRiskCheck(
-    type: "sizing" | "portfolio" | "circuit_breaker" | "stop",
+    type: "sizing" | "portfolio" | "circuit_breaker" | "stop" | "dynamic_risk",
     symbol: string | undefined,
     passed: boolean,
     details: Record<string, unknown>,

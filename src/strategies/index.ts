@@ -12,3 +12,9 @@ export {
 export { RSIStrategy, type RSIConfig } from "./rsi-strategy.js";
 export { BollingerBandsStrategy, type BollingerConfig } from "./bollinger-bands-strategy.js";
 export { MovingAverageCrossoverStrategy as MACrossoverStrategy } from "./ma-crossover.js";
+
+export {
+  IntelligentStrategySelector,
+  type MarketCondition,
+  type StrategyRecommendation,
+} from "./intelligent-selector.js";

@@ -117,6 +117,29 @@ export class TradingAgentDB {
   }
 
   /**
+   * Store a memory with custom namespace
+   */
+  async store(memory: Memory, namespace: string = "trading"): Promise<void> {
+    await this.memory.store(memory, namespace);
+  }
+
+  /**
+   * Search memories with custom namespace
+   */
+  async search(
+    embedding: number[],
+    options: { topK?: number; threshold?: number; filter?: Record<string, unknown>; useAttention?: boolean },
+    namespace: string = "trading"
+  ): Promise<SearchResult[]> {
+    return this.memory.search(embedding, {
+      topK: options.topK || 10,
+      threshold: options.threshold || 0.7,
+      filter: options.filter,
+      useAttention: options.useAttention ?? true,
+    }, namespace);
+  }
+
+  /**
    * Find similar historical trades
    */
   async findSimilarTrades(trade: TradeMemory, k: number = 5): Promise<TradeMemory[]> {
