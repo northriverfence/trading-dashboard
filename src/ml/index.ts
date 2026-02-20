@@ -1,17 +1,17 @@
-/**
- * Machine Learning Module
- * Feature engineering and ML-powered trading strategies
- */
+// src/ml/index.ts
+// ML Module - Multi-Model Embeddings for Trade Analysis
 
-export { FeatureEngineer } from "./feature-engineer.js";
-export type { FeatureConfig, FeatureSet } from "./feature-engineer.js";
-
-export { ModelManager, SimpleNeuralNetwork } from "./model-manager.js";
 export type {
-  ModelConfig,
-  PredictionResult,
-  ModelPerformance,
-} from "./model-manager.js";
+    EmbeddingModel,
+    FeatureImportance,
+    CacheConfig,
+    CacheStats,
+} from "./types.js";
 
-export { MLStrategy } from "./ml-strategy.js";
-export type { MLStrategyConfig, MLStrategyState } from "./ml-strategy.js";
+export { EmbeddingRegistry } from "./embedding-registry.js";
+export { EmbeddingCache } from "./embedding-cache.js";
+
+// Embedding Models
+export { PriceActionEmbedder } from "./models/price-action-embedder.js";
+export { StatisticalEmbedder } from "./models/statistical-embedder.js";
+export { MomentumEmbedder } from "./models/momentum-embedder.js";
