@@ -145,7 +145,7 @@ export class RegimeDetector {
     }
 
     // Detect volatile
-    if (volatility > this.volatilityThreshold * 1.5) {
+    if (volatility > this.volatilityThreshold * 2) {
       return {
         type: "volatile",
         strength: Math.min(1, volatility / 0.05),
@@ -154,8 +154,8 @@ export class RegimeDetector {
       };
     }
 
-    // Detect trending (only if not too volatile)
-    if (Math.abs(trend) > this.trendThreshold && volatility < this.volatilityThreshold) {
+    // Detect trending (only if volatility is low enough)
+    if (Math.abs(trend) > this.trendThreshold && volatility < this.volatilityThreshold * 1.5) {
       return {
         type: trend > 0 ? "trending_up" : "trending_down",
         strength: Math.min(1, Math.abs(trend) / 0.02),
