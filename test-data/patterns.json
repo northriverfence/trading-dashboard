@@ -1,34 +1,34 @@
 [
   {
     "pattern": "strategy:breakout",
-    "occurrenceCount": 23,
+    "occurrenceCount": 34,
     "successRate": 0,
     "avgPnl": 0,
-    "lastSeen": "2026-02-20T15:27:08.122Z",
+    "lastSeen": "2026-02-20T21:35:33.350Z",
     "confidence": 0
   },
   {
     "pattern": "market:bullish",
-    "occurrenceCount": 23,
+    "occurrenceCount": 34,
     "successRate": 0,
     "avgPnl": 0,
-    "lastSeen": "2026-02-20T15:27:08.122Z",
+    "lastSeen": "2026-02-20T21:35:33.350Z",
     "confidence": 0
   },
   {
     "pattern": "symbol:AAPL",
-    "occurrenceCount": 23,
+    "occurrenceCount": 34,
     "successRate": 0,
     "avgPnl": 0,
-    "lastSeen": "2026-02-20T15:27:08.122Z",
+    "lastSeen": "2026-02-20T21:35:33.350Z",
     "confidence": 0
   },
   {
     "pattern": "side:buy",
-    "occurrenceCount": 23,
+    "occurrenceCount": 34,
     "successRate": 0,
     "avgPnl": 0,
-    "lastSeen": "2026-02-20T15:27:08.122Z",
+    "lastSeen": "2026-02-20T21:35:33.350Z",
     "confidence": 0
   }
 ]
