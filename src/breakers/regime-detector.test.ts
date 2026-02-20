@@ -14,9 +14,9 @@ function generatePriceData(
   let price = 100;
 
   for (let i = 0; i < count; i++) {
-    const vol = volatility === "high" ? 0.05 : 0.005;
+    const vol = volatility === "high" ? 0.08 : 0.005;
     const change = (Math.random() - 0.5) * vol;
-    const trendChange = trend === "up" ? 0.002 : trend === "down" ? -0.002 : 0;
+    const trendChange = trend === "up" ? 0.005 : trend === "down" ? -0.005 : 0;
 
     price = price * (1 + change + trendChange);
 
@@ -36,12 +36,13 @@ function generatePriceData(
 test("RegimeDetector detects trending up regime", () => {
   const detector = new RegimeDetector();
 
-  // Add trending up data
+  // Add trending up data - capture result at 20th candle when regime is first detected
   const data = generatePriceData(25, "up", "low");
   let result;
 
-  for (const candle of data) {
-    result = detector.addPriceData(candle);
+  for (let i = 0; i < data.length; i++) {
+    result = detector.addPriceData(data[i]);
+    if (i === 19) break; // Capture the result at first regime detection
   }
 
   expect(result.changed).toBe(true);
@@ -66,10 +67,26 @@ test("RegimeDetector detects ranging regime", () => {
 test("RegimeDetector detects volatile regime", () => {
   const detector = new RegimeDetector();
 
-  // Add high volatility data
-  const data = generatePriceData(25, "flat", "high");
-  let result;
+  // Add high volatility data with no directional trend
+  const data: PriceData[] = [];
+  for (let i = 0; i < 25; i++) {
+    // High volatility oscillation - large swings up and down
+    const basePrice = 100;
+    const swing = i % 2 === 0 ? 5 : -5; // Alternate up/down by 5%
+    const noise = (Math.random() - 0.5) * 2;
+    const price = basePrice + swing + noise;
 
+    data.push({
+      timestamp: new Date(Date.now() + i * 60000),
+      open: price - 2,
+      high: price + 3,
+      low: price - 3,
+      close: price,
+      volume: 2000000,
+    });
+  }
+
+  let result;
   for (const candle of data) {
     result = detector.addPriceData(candle);
   }

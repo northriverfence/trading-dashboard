@@ -206,6 +206,19 @@ export class EventAggregator {
   }
 
   /**
+   * Search events by text
+   */
+  search(query: string): DashboardEvent[] {
+    const lowerQuery = query.toLowerCase();
+    return this.events.filter(
+      (e) =>
+        e.message.toLowerCase().includes(lowerQuery) ||
+        e.title.toLowerCase().includes(lowerQuery) ||
+        e.source.toLowerCase().includes(lowerQuery),
+    );
+  }
+
+  /**
    * Get events for time range
    */
   getForTimeRange(start: Date, end: Date): DashboardEvent[] {

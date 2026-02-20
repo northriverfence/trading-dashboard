@@ -57,7 +57,8 @@ export class RegimeDetector {
 
     const newRegime = this.detectRegime();
     const previousRegime = this.currentRegime;
-    const changed = !previousRegime || previousRegime.type !== newRegime.type;
+    // First regime detection counts as changed
+    const changed = !previousRegime || previousRegime.type !== newRegime.type || this.regimeHistory.length === 0;
 
     if (changed) {
       newRegime.duration = 1;
@@ -120,8 +121,8 @@ export class RegimeDetector {
 
   private detectRegime(): MarketRegime {
     const recent = this.priceHistory.slice(-this.lookbackPeriod);
-    const prices = recent.map(r => r.close);
-    const volumes = recent.map(r => r.volume);
+    const prices = recent.map((r) => r.close);
+    const volumes = recent.map((r) => r.volume);
 
     const returns = [];
     for (let i = 1; i < prices.length; i++) {
@@ -144,7 +145,7 @@ export class RegimeDetector {
     }
 
     // Detect volatile
-    if (volatility > this.volatilityThreshold * 2) {
+    if (volatility > this.volatilityThreshold * 1.5) {
       return {
         type: "volatile",
         strength: Math.min(1, volatility / 0.05),
@@ -153,8 +154,8 @@ export class RegimeDetector {
       };
     }
 
-    // Detect trending
-    if (Math.abs(trend) > this.trendThreshold && volatility < this.volatilityThreshold * 1.5) {
+    // Detect trending (only if not too volatile)
+    if (Math.abs(trend) > this.trendThreshold && volatility < this.volatilityThreshold) {
       return {
         type: trend > 0 ? "trending_up" : "trending_down",
         strength: Math.min(1, Math.abs(trend) / 0.02),

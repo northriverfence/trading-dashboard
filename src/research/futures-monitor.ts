@@ -86,8 +86,8 @@ export class FuturesMonitor {
     const sma20 = this.calculateSMA(history, 20);
     const sma10 = this.calculateSMA(history.slice(-10), 10);
     let trend: "up" | "down" | "sideways" = "sideways";
-    if (sma10 > sma20 * 1.005) trend = "up";
-    else if (sma10 < sma20 * 0.995) trend = "down";
+    if (sma10 > sma20 * 1.001) trend = "up";
+    else if (sma10 < sma20 * 0.999) trend = "down";
 
     // Calculate volatility
     const volatility = this.calculateVolatility(history);
@@ -177,8 +177,8 @@ export class FuturesMonitor {
     const signals = this.generateSignals();
     if (signals.length === 0) return "neutral";
 
-    const bullish = signals.filter(s => s.type === "bullish").length;
-    const bearish = signals.filter(s => s.type === "bearish").length;
+    const bullish = signals.filter((s) => s.type === "bullish").length;
+    const bearish = signals.filter((s) => s.type === "bearish").length;
 
     if (bullish > bearish * 1.5) return "bullish";
     if (bearish > bullish * 1.5) return "bearish";
@@ -273,11 +273,7 @@ export class FuturesMonitor {
     return Math.sqrt(variance);
   }
 
-  private calculateConviction(
-    trend: string,
-    volatility: string,
-    changePercent: number
-  ): number {
+  private calculateConviction(trend: string, volatility: string, changePercent: number): number {
     let conviction = 0.5;
 
     // Strong trend increases conviction

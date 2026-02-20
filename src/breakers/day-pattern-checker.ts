@@ -33,8 +33,10 @@ export class DayPatternChecker {
   private historicalData: Map<string, HistoricalDayData[]> = new Map();
   private blockedPatterns: Set<string> = new Set();
 
-  constructor() {
-    this.loadDefaultPatterns();
+  constructor(loadDefaults = false) {
+    if (loadDefaults) {
+      this.loadDefaultPatterns();
+    }
   }
 
   /**
@@ -44,6 +46,17 @@ export class DayPatternChecker {
     const pattern = this.extractPattern(date);
     const patternKey = this.getPatternKey(pattern);
     const historical = this.historicalData.get(patternKey) || [];
+
+    // Check for explicitly blocked patterns first
+    if (this.blockedPatterns.has(patternKey)) {
+      const stats = this.calculateStats(historical);
+      return {
+        allowed: false,
+        riskLevel: "extreme",
+        reason: "Pattern explicitly blocked due to historical performance",
+        ...stats,
+      };
+    }
 
     if (historical.length === 0) {
       return {
@@ -58,16 +71,6 @@ export class DayPatternChecker {
 
     const stats = this.calculateStats(historical);
     const riskLevel = this.determineRiskLevel(stats);
-
-    // Check for explicitly blocked patterns
-    if (this.blockedPatterns.has(patternKey)) {
-      return {
-        allowed: false,
-        riskLevel: "extreme",
-        reason: "Pattern explicitly blocked due to historical performance",
-        ...stats,
-      };
-    }
 
     // Block extreme risk days
     if (riskLevel === "extreme") {
@@ -155,7 +158,13 @@ export class DayPatternChecker {
     const returns = data.map((d) => d.return);
     const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
     const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
-    const historicalVolatility = Math.sqrt(variance);
+    let historicalVolatility = Math.sqrt(variance);
+
+    // If calculated volatility is 0, use the average of stored volatility values
+    if (historicalVolatility === 0) {
+      historicalVolatility = data.reduce((sum, d) => sum + d.volatility, 0) / data.length;
+    }
+
     const winRate = data.filter((d) => d.wasProfitable).length / data.length;
 
     return { historicalVolatility, avgReturn, winRate };

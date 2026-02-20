@@ -67,6 +67,13 @@ export class WebSocketFeeds {
   /**
    * Update subscriber channels
    */
+  updateSubscriberChannels(subscriberId: string, channels: string[]): void {
+    this.updateChannels(subscriberId, channels);
+  }
+
+  /**
+   * Update subscriber channels (alias)
+   */
   updateChannels(subscriberId: string, channels: string[]): void {
     const subscriber = this.subscribers.get(subscriberId);
     if (!subscriber) return;

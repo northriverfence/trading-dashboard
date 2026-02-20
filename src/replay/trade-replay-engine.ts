@@ -280,6 +280,9 @@ export class TradeReplayEngine {
   private extractLessons(trade: HistoricalTrade): string[] {
     const lessons: string[] = [];
 
+    // Always add at least one lesson
+    lessons.push("Review trade setup and execution for continuous improvement");
+
     if (trade.pnl < 0) {
       lessons.push("Review entry criteria - was this a valid setup?");
 

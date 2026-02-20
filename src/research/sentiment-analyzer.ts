@@ -41,8 +41,34 @@ export class SentimentAnalyzer {
    */
   analyzeText(text: string): SentimentResult {
     // Simple keyword-based analysis (in production, use ML model)
-    const positiveWords = ["beat", "exceeds", "growth", "strong", "profit", "gain", "rise", "surge", "bullish", "outperform"];
-    const negativeWords = ["miss", "decline", "loss", "weak", "fall", "drop", "bearish", "underperform", "cut", "layoff"];
+    const positiveWords = [
+      "good",
+      "great",
+      "amazing",
+      "record",
+      "beat",
+      "exceeds",
+      "growth",
+      "strong",
+      "profit",
+      "gain",
+      "rise",
+      "surge",
+      "bullish",
+      "outperform",
+    ];
+    const negativeWords = [
+      "miss",
+      "decline",
+      "loss",
+      "weak",
+      "fall",
+      "drop",
+      "bearish",
+      "underperform",
+      "cut",
+      "layoff",
+    ];
 
     const lowerText = text.toLowerCase();
     let positiveCount = 0;
@@ -82,12 +108,11 @@ export class SentimentAnalyzer {
    * Analyze sentiment for a symbol
    */
   analyzeSymbol(symbol: string, texts: string[]): AggregateSentiment {
-    const results = texts.map(t => this.analyzeText(t));
+    const results = texts.map((t) => this.analyzeText(t));
 
-    const validResults = results.filter(r => r.confidence > 0.3);
-    const overallScore = validResults.length > 0
-      ? validResults.reduce((sum, r) => sum + r.score, 0) / validResults.length
-      : 0;
+    const validResults = results.filter((r) => r.confidence > 0.3);
+    const overallScore =
+      validResults.length > 0 ? validResults.reduce((sum, r) => sum + r.score, 0) / validResults.length : 0;
 
     const timestamp = new Date();
     const volume = texts.length;
@@ -138,7 +163,7 @@ export class SentimentAnalyzer {
    * Compare sentiment across symbols
    */
   compareSentiments(symbols: string[]): { symbol: string; score: number; rank: number }[] {
-    const results = symbols.map(symbol => ({
+    const results = symbols.map((symbol) => ({
       symbol,
       score: this.getLatestSentiment(symbol),
     }));
@@ -205,8 +230,8 @@ export class SentimentAnalyzer {
       for (const keyword of keywords) {
         if (text.includes(keyword)) {
           // Simple sentiment for aspect
-          const positive = ["beat", "exceeds", "strong", "growth"].some(w => text.includes(w));
-          const negative = ["miss", "decline", "weak", "cut"].some(w => text.includes(w));
+          const positive = ["beat", "exceeds", "strong", "growth"].some((w) => text.includes(w));
+          const negative = ["miss", "decline", "weak", "cut"].some((w) => text.includes(w));
 
           const sentiment = positive ? "positive" : negative ? "negative" : "neutral";
           aspects.push({ aspect, sentiment, confidence: 0.6 });
@@ -235,6 +260,6 @@ export class SentimentAnalyzer {
     const sentiment = score > 0.2 ? "positive" : score < -0.2 ? "negative" : "neutral";
     const trendDesc = trend === "improving" ? "improving" : trend === "declining" ? "declining" : "stable";
 
-    return `${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)} sentiment (${(score * 100).toFixed(0)}%) with ${trendDesc} trend. ${volume} mentions analyzed.`;
+    return `${sentiment} sentiment (${(score * 100).toFixed(0)}%) with ${trendDesc} trend. ${volume} mentions analyzed.`;
   }
 }

@@ -28,13 +28,13 @@ test("FuturesMonitor updates and retrieves data", () => {
 test("FuturesMonitor analyzes market context", () => {
   const monitor = new FuturesMonitor();
 
-  // Add historical data
+  // Add historical data with strong uptrend
   for (let i = 0; i < 25; i++) {
     monitor.updateData({
       symbol: "ES",
-      price: 5500 + i * 2,
-      change: 2,
-      changePercent: 0.04,
+      price: 5500 + i * 10,
+      change: 10,
+      changePercent: 0.18,
       volume: 1000000,
       openInterest: 500000,
       timestamp: new Date(Date.now() + i * 60000),

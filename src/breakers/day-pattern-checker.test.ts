@@ -68,12 +68,12 @@ test("DayPatternChecker extracts correct day patterns", () => {
 test("DayPatternChecker detects month-end patterns", () => {
   const checker = new DayPatternChecker();
 
-  // End of month (June 28, 2024)
-  const monthEnd = checker.extractPattern(new Date("2024-06-28"));
+  // End of month but NOT quarter end (May 28, 2024 - month 4 is not a quarter end month)
+  const monthEnd = checker.extractPattern(new Date("2024-05-28"));
   expect(monthEnd.isMonthEnd).toBe(true);
   expect(monthEnd.isQuarterEnd).toBe(false);
 
-  // Quarter end (June 28 is near quarter end)
+  // Quarter end (June 28, 2024 - month 5 is Q2 end)
   const quarterEnd = checker.extractPattern(new Date("2024-06-28"));
   expect(quarterEnd.isQuarterEnd).toBe(true); // June is month 5, quarter end
 });
@@ -81,12 +81,16 @@ test("DayPatternChecker detects month-end patterns", () => {
 test("DayPatternChecker tracks blocked patterns", () => {
   const checker = new DayPatternChecker();
 
+  // Get initial count of default blocked patterns
+  const initialBlockedCount = checker.getBlockedPatterns().length;
+
   const pattern = checker.extractPattern(new Date("2024-07-04"));
   checker.blockPattern(pattern);
 
   const blocked = checker.getBlockedPatterns();
-  expect(blocked.length).toBeGreaterThan(0);
+  expect(blocked.length).toBe(initialBlockedCount + 1);
 
   checker.unblockPattern(pattern);
-  expect(checker.getBlockedPatterns().length).toBe(0);
+  // After unblocking, should return to initial count (default blocked patterns remain)
+  expect(checker.getBlockedPatterns().length).toBe(initialBlockedCount);
 });

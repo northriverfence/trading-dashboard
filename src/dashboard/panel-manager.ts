@@ -39,9 +39,12 @@ export class PanelManager {
   /**
    * Create new layout
    */
+  private layoutIdCounter = 0;
+
   createLayout(name: string, panels: Panel[] = []): Layout {
+    this.layoutIdCounter++;
     const layout: Layout = {
-      id: `layout-${Date.now()}`,
+      id: `layout-${Date.now()}-${this.layoutIdCounter}`,
       name,
       panels,
     };
@@ -397,43 +400,49 @@ export class PanelManager {
     this.setActiveLayout(tradingLayout.id);
 
     // Create analytics layout
-    this.createLayout("Analytics", [
-      {
-        id: "panel-distribution",
-        title: "Trade Distribution",
-        type: "chart",
-        position: { x: 0, y: 0, w: 6, h: 4 },
-        config: { chartType: "distribution" },
-        refreshInterval: 300,
-        dataSource: "trades",
-      },
-      {
-        id: "panel-monthly",
-        title: "Monthly Returns",
-        type: "chart",
-        position: { x: 6, y: 0, w: 6, h: 4 },
-        config: { chartType: "monthly" },
-        refreshInterval: 300,
-        dataSource: "returns",
-      },
-      {
-        id: "panel-drawdown",
-        title: "Drawdown Analysis",
-        type: "chart",
-        position: { x: 0, y: 4, w: 6, h: 4 },
-        config: { chartType: "drawdown" },
-        refreshInterval: 300,
-        dataSource: "equity",
-      },
-      {
-        id: "panel-symbols",
-        title: "Performance by Symbol",
-        type: "table",
-        position: { x: 6, y: 4, w: 6, h: 4 },
-        config: { sortBy: "pnl", sortDesc: true },
-        refreshInterval: 300,
-        dataSource: "symbolPerformance",
-      },
-    ]);
+    const analyticsLayout: Layout = {
+      id: `layout-${Date.now()}-analytics`,
+      name: "Analytics",
+      panels: [
+        {
+          id: "panel-distribution",
+          title: "Trade Distribution",
+          type: "chart",
+          position: { x: 0, y: 0, w: 6, h: 4 },
+          config: { chartType: "distribution" },
+          refreshInterval: 300,
+          dataSource: "trades",
+        },
+        {
+          id: "panel-monthly",
+          title: "Monthly Returns",
+          type: "chart",
+          position: { x: 6, y: 0, w: 6, h: 4 },
+          config: { chartType: "monthly" },
+          refreshInterval: 300,
+          dataSource: "returns",
+        },
+        {
+          id: "panel-drawdown",
+          title: "Drawdown Analysis",
+          type: "chart",
+          position: { x: 0, y: 4, w: 6, h: 4 },
+          config: { chartType: "drawdown" },
+          refreshInterval: 300,
+          dataSource: "equity",
+        },
+        {
+          id: "panel-symbols",
+          title: "Performance by Symbol",
+          type: "table",
+          position: { x: 6, y: 4, w: 6, h: 4 },
+          config: { sortBy: "pnl", sortDesc: true },
+          refreshInterval: 300,
+          dataSource: "symbolPerformance",
+        },
+      ],
+    };
+
+    this.layouts.set(analyticsLayout.id, analyticsLayout);
   }
 }
