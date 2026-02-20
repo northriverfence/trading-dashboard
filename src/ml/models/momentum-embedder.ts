@@ -38,7 +38,7 @@ export class MomentumEmbedder implements EmbeddingModel {
       new Date(trade.timestamp).getDay() / 7,
 
       // Confidence
-      (trade as any).confidence ?? 0.5,
+      trade.confidence ?? 0.5,
 
       // Strategy encoding (one-hot for trend_following)
       0, // breakout
@@ -100,61 +100,69 @@ export class MomentumEmbedder implements EmbeddingModel {
   private calculateMAAlignment(trade: TradeMemory): number {
     // Simulate MA alignment based on entry vs stop
     // Positive = bullish alignment, negative = bearish
-    const stop = trade.stopLoss ?? trade.entryPrice * 0.96;
-    const distance = (trade.entryPrice - stop) / trade.entryPrice;
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const stop = trade.stopLoss ?? safeEntryPrice * 0.96;
+    const distance = (safeEntryPrice - stop) / safeEntryPrice;
     return trade.side === "buy" ? distance * 5 : -distance * 5;
   }
 
   private calculateRSISlope(trade: TradeMemory): number {
     // Approximate RSI slope based on entry price and market condition
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
     const baseRsi = trade.marketCondition === "bullish" ? 60 : trade.marketCondition === "bearish" ? 40 : 50;
-    const momentum = (trade.takeProfit ?? trade.entryPrice * 1.05) / trade.entryPrice;
+    const momentum = (trade.takeProfit ?? safeEntryPrice * 1.05) / safeEntryPrice;
     return (momentum - 1) * 10; // Positive slope for bullish momentum, normalized
   }
 
   private calculateMACD(trade: TradeMemory): number {
     // MACD histogram approximation
-    const target = trade.takeProfit ?? trade.entryPrice * 1.05;
-    const momentum = Math.abs(target - trade.entryPrice) / trade.entryPrice;
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const target = trade.takeProfit ?? safeEntryPrice * 1.05;
+    const momentum = Math.abs(target - trade.entryPrice) / safeEntryPrice;
     return trade.side === "buy" ? momentum : -momentum; // Normalized to -1 to 1
   }
 
   private calculateADX(trade: TradeMemory): number {
     // Trend strength approximation (ADX ranges 0-100, normalized to 0-1)
-    const target = trade.takeProfit ?? trade.entryPrice * 1.05;
-    const stop = trade.stopLoss ?? trade.entryPrice * 0.96;
-    const riskReward = Math.abs(target - trade.entryPrice) / Math.abs(trade.entryPrice - stop);
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const target = trade.takeProfit ?? safeEntryPrice * 1.05;
+    const stop = trade.stopLoss ?? safeEntryPrice * 0.96;
+    const riskReward = Math.abs(target - trade.entryPrice) / Math.abs(safeEntryPrice - stop);
     // Higher ADX for strong trends with good risk/reward, normalized
     return Math.min((25 + riskReward * 15) / 100, 1);
   }
 
   private calculateMomentum(trade: TradeMemory): number {
     // Price momentum based on expected move
-    const target = trade.takeProfit ?? trade.entryPrice * 1.05;
-    const momentum = Math.abs(target - trade.entryPrice) / trade.entryPrice;
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const target = trade.takeProfit ?? safeEntryPrice * 1.05;
+    const momentum = Math.abs(target - trade.entryPrice) / safeEntryPrice;
     return trade.side === "buy" ? momentum : -momentum; // Normalized to -1 to 1
   }
 
   private calculateTrendStrength(trade: TradeMemory): number {
     // Composite trend strength score
-    const target = trade.takeProfit ?? trade.entryPrice * 1.05;
-    const stop = trade.stopLoss ?? trade.entryPrice * 0.96;
-    const move = Math.abs(target - trade.entryPrice) / trade.entryPrice;
-    const risk = Math.abs(trade.entryPrice - stop) / trade.entryPrice;
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const target = trade.takeProfit ?? safeEntryPrice * 1.05;
+    const stop = trade.stopLoss ?? safeEntryPrice * 0.96;
+    const move = Math.abs(target - trade.entryPrice) / safeEntryPrice;
+    const risk = Math.abs(safeEntryPrice - stop) / safeEntryPrice;
     const strength = move / Math.max(risk, 0.001);
     return Math.min(strength / 5, 1); // Normalize to 0-1
   }
 
   private calculateRiskReward(trade: TradeMemory): number {
-    const stop = trade.stopLoss ?? trade.entryPrice * 0.96;
-    const target = trade.takeProfit ?? trade.entryPrice * 1.05;
-    const risk = Math.abs(trade.entryPrice - stop);
-    const reward = Math.abs(target - trade.entryPrice);
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const stop = trade.stopLoss ?? safeEntryPrice * 0.96;
+    const target = trade.takeProfit ?? safeEntryPrice * 1.05;
+    const risk = Math.abs(safeEntryPrice - stop);
+    const reward = Math.abs(target - safeEntryPrice);
     return risk > 0 ? Math.min(reward / risk, 10) : 3; // Cap at 10
   }
 
   private estimateStopDistance(trade: TradeMemory): number {
-    const stop = trade.stopLoss ?? trade.entryPrice * 0.96;
-    return Math.abs(trade.entryPrice - stop) / trade.entryPrice;
+    const safeEntryPrice = Math.max(trade.entryPrice, 0.0001);
+    const stop = trade.stopLoss ?? safeEntryPrice * 0.96;
+    return Math.abs(safeEntryPrice - stop) / safeEntryPrice;
   }
 }
