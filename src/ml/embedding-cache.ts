@@ -11,29 +11,30 @@ export interface CacheStats {
 
 export class EmbeddingCache {
   private cache = new Map<string, number[]>();
-  private accessOrder: string[] = [];
   private config: CacheConfig;
   private hits = 0;
   private misses = 0;
 
   constructor(config: CacheConfig) {
+    if (!config.maxSize || config.maxSize <= 0) {
+      throw new Error("maxSize must be a positive integer");
+    }
     this.config = config;
   }
 
   set(tradeId: string, embedding: number[]): void {
     if (this.cache.has(tradeId)) {
-      // Update existing: remove from order first
-      this.accessOrder = this.accessOrder.filter((id) => id !== tradeId);
+      // Update existing: delete and re-set to move to end (most recent)
+      this.cache.delete(tradeId);
     } else if (this.cache.size >= this.config.maxSize) {
-      // Evict oldest
-      const oldest = this.accessOrder.shift();
-      if (oldest) {
-        this.cache.delete(oldest);
+      // Evict oldest (first entry in Map)
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
       }
     }
 
     this.cache.set(tradeId, [...embedding]); // Copy to avoid mutation
-    this.accessOrder.push(tradeId);
   }
 
   get(tradeId: string): number[] | null {
@@ -44,9 +45,9 @@ export class EmbeddingCache {
       return null;
     }
 
-    // Update LRU order
-    this.accessOrder = this.accessOrder.filter((id) => id !== tradeId);
-    this.accessOrder.push(tradeId);
+    // Update LRU order: delete and re-set to move to end (most recent)
+    this.cache.delete(tradeId);
+    this.cache.set(tradeId, embedding);
 
     this.hits++;
     return [...embedding]; // Return copy
@@ -54,7 +55,6 @@ export class EmbeddingCache {
 
   clear(): void {
     this.cache.clear();
-    this.accessOrder = [];
     this.hits = 0;
     this.misses = 0;
   }
