@@ -1,3 +1,4 @@
+// src/__tests__/trading/types.test.ts
 import { test, expect } from "bun:test";
 import type { Order, OrderSide, OrderType, TimeInForce } from "../../trading/types.js";
 

@@ -1,3 +1,5 @@
+// src/trading/types.ts
+
 export type OrderSide = "buy" | "sell";
 
 export type OrderType = "market" | "limit" | "stop" | "stop_limit";
