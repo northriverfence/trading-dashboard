@@ -40,3 +40,33 @@ test("DiscoveryOptions interface structure", () => {
 
     expect(options.minClusterSize).toBe(3);
 });
+
+test("ClusterGraph interface structure", () => {
+    const graph: ClusterGraph = {
+        nodes: [{ id: 1, size: 5, winRate: 0.7 }],
+        edges: [{ source: 1, target: 2, similarity: 0.8 }],
+    };
+
+    expect(graph.nodes.length).toBe(1);
+    expect(graph.nodes[0]!.id).toBe(1);
+    expect(graph.nodes[0]!.size).toBe(5);
+    expect(graph.edges.length).toBe(1);
+    expect(graph.edges[0]!.source).toBe(1);
+    expect(graph.edges[0]!.target).toBe(2);
+});
+
+test("ClusterAnalysis interface structure", () => {
+    const analysis: ClusterAnalysis = {
+        clusterId: 1,
+        tradeCount: 10,
+        winRate: 0.75,
+        avgPnl: 100,
+        commonFeatures: { price: 0.5 },
+        dominantStrategy: "momentum",
+    };
+
+    expect(analysis.clusterId).toBe(1);
+    expect(analysis.tradeCount).toBe(10);
+    expect(analysis.winRate).toBe(0.75);
+    expect(analysis.dominantStrategy).toBe("momentum");
+});
