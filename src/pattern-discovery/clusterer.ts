@@ -1,5 +1,5 @@
 // src/pattern-discovery/clusterer.ts
-export interface HDBSCANConfig {
+export interface DBSCANConfig {
   minClusterSize: number;
   minSamples: number;
 }
@@ -10,10 +10,10 @@ export interface ClusterResult {
   noise: number[];
 }
 
-export class HDBSCANClusterer {
-  private config: HDBSCANConfig;
+export class DBSCANClusterer {
+  private config: DBSCANConfig;
 
-  constructor(config: HDBSCANConfig) {
+  constructor(config: DBSCANConfig) {
     this.config = config;
   }
 
