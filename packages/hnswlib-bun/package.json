@@ -1,0 +1,38 @@
+{
+  "name": "hnswlib-bun",
+  "version": "0.1.0",
+  "description": "High-performance HNSW vector search for Bun using native FFI",
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/types.ts",
+  "files": [
+    "src/",
+    "cpp/",
+    "build/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "keywords": [
+    "hnsw",
+    "vector-search",
+    "similarity-search",
+    "ann",
+    "bun",
+    "ffi"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/northriverfence/trading-dashboard.git",
+    "directory": "packages/hnswlib-bun"
+  }
+}
