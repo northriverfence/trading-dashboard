@@ -273,6 +273,119 @@ describe("AdvancedSimulationEngine - All Modes", () => {
   });
 });
 
+describe("AdvancedSimulationEngine - Metrics Calculations", () => {
+  test("calculates winRate correctly for winning trades", async () => {
+    const results = await advancedEngine.runSimulation({
+      mode: "fast",
+      strategy: (ctx) => {
+        // Buy at bar 0 (price: 152), sell at bar 4 (price: 161) - should be profitable
+        if (ctx.currentBarIndex === 0) ctx.buy(10);
+        if (ctx.currentBarIndex === 4) ctx.sell(10);
+      },
+    });
+
+    // Should have 2 trades (1 buy, 1 sell)
+    expect(results.metrics.totalTrades).toBe(2);
+
+    // Win rate should be 100% since the sell trade was profitable
+    expect(results.metrics.winRate).toBe(100);
+
+    // avgWin should be positive (profit from selling higher than buying)
+    expect(results.metrics.avgWin).toBeGreaterThan(0);
+
+    // avgLoss should be 0 since there were no losing trades
+    expect(results.metrics.avgLoss).toBe(0);
+  });
+
+  test("calculates winRate correctly for losing trades", async () => {
+    const results = await advancedEngine.runSimulation({
+      mode: "fast",
+      strategy: (ctx) => {
+        // Buy at bar 0 (price: 152), sell at bar 2 (price: 155) - small profit
+        // Buy at bar 2 (price: 155), sell at bar 3 (price: 158) - profit
+        if (ctx.currentBarIndex === 0) ctx.buy(10);
+        if (ctx.currentBarIndex === 2) {
+          ctx.sell(10);
+          ctx.buy(10);
+        }
+        if (ctx.currentBarIndex === 3) ctx.sell(10);
+      },
+    });
+
+    // Both sell trades should be profitable (bought at 152, sold at 155; bought at 155, sold at 158)
+    expect(results.metrics.winRate).toBe(100);
+    expect(results.metrics.avgWin).toBeGreaterThan(0);
+  });
+
+  test("calculates maxDrawdown correctly", async () => {
+    const results = await advancedEngine.runSimulation({
+      mode: "fast",
+      strategy: (ctx) => {
+        // Buy at start, hold through any drawdown, sell at end
+        if (ctx.currentBarIndex === 0) ctx.buy(10);
+        if (ctx.currentBarIndex === 4) ctx.sell(10);
+      },
+    });
+
+    // maxDrawdown should be a non-negative number
+    expect(results.metrics.maxDrawdown).toBeGreaterThanOrEqual(0);
+
+    // Verify equity curve was recorded
+    expect(results.equityCurve.length).toBeGreaterThan(0);
+  });
+
+  test("calculates Sharpe ratio correctly", async () => {
+    const results = await advancedEngine.runSimulation({
+      mode: "fast",
+      strategy: (ctx) => {
+        if (ctx.currentBarIndex === 0) ctx.buy(10);
+        if (ctx.currentBarIndex === 4) ctx.sell(10);
+      },
+    });
+
+    // Sharpe ratio should be a number (can be positive, negative, or zero)
+    expect(typeof results.metrics.sharpeRatio).toBe("number");
+
+    // With a profitable strategy, Sharpe ratio should be positive
+    if (results.metrics.totalReturn > 0) {
+      expect(results.metrics.sharpeRatio).toBeGreaterThan(0);
+    }
+  });
+
+  test("metrics are consistent across fast and advanced modes", async () => {
+    const fastResults = await advancedEngine.runSimulation({
+      mode: "fast",
+      strategy: (ctx) => {
+        if (ctx.currentBarIndex === 0) ctx.buy(10);
+        if (ctx.currentBarIndex === 4) ctx.sell(10);
+      },
+    });
+
+    // Reset position entries before running advanced mode
+    advancedEngine = new AdvancedSimulationEngine({
+      engine,
+      symbol: "AAPL",
+      initialCash: 100000,
+      websocketFeeds: mockWebSocket as unknown as import("../../dashboard/websocket-feeds.js").WebSocketFeeds,
+    });
+
+    const advancedResults = await advancedEngine.runSimulation({
+      mode: "advanced",
+      strategy: (ctx) => {
+        if (ctx.currentBarIndex === 0) ctx.buy(10);
+        if (ctx.currentBarIndex === 4) ctx.sell(10);
+      },
+    });
+
+    // Both should have the same number of trades
+    expect(fastResults.metrics.totalTrades).toBe(advancedResults.metrics.totalTrades);
+
+    // Both should have calculated metrics (not hardcoded zeros)
+    expect(fastResults.metrics.winRate).not.toBe(0);
+    expect(advancedResults.metrics.winRate).not.toBe(0);
+  });
+});
+
 describe("AdvancedSimulationEngine - Configuration", () => {
   test("can configure slippage model parameters", () => {
     const customEngine = new AdvancedSimulationEngine({

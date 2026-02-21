@@ -26,6 +26,13 @@ export interface ExtendedTrade extends Trade {
   slippage?: number;
   marketImpact?: number;
   orderBookDepth?: OrderBookDepth;
+  pnl?: number; // Profit/loss for closed trades (sell trades that close positions)
+}
+
+// Interface for tracking position entries to calculate P&L
+interface PositionEntry {
+  qty: number;
+  avgEntryPrice: number;
 }
 
 export interface SimulationResult {
@@ -92,6 +99,7 @@ export class AdvancedSimulationEngine {
   private equityCurve: number[] = [];
   private orderBookHistory: { timestamp: Date; depth: OrderBookDepth }[] = [];
   private bars: Bar[] = [];
+  private positionEntries: Map<string, PositionEntry> = new Map(); // Track position entries for P&L calculation
 
   constructor(config: EngineConstructorConfig) {
     this.engine = config.engine;
@@ -121,6 +129,7 @@ export class AdvancedSimulationEngine {
     this.simulationTrades = [];
     this.equityCurve = [];
     this.orderBookHistory = [];
+    this.positionEntries.clear();
 
     // Load and filter bars
     this.loadBars(config.startDate, config.endDate);
@@ -339,6 +348,23 @@ export class AdvancedSimulationEngine {
 
     this.simulationTrades.push(trade);
 
+    // Track position entry for P&L calculation
+    const currentEntry = this.positionEntries.get(this.symbol);
+    if (currentEntry) {
+      // Average up the position
+      const totalQty = currentEntry.qty + qty;
+      const totalCost = currentEntry.qty * currentEntry.avgEntryPrice + qty * bar.close;
+      this.positionEntries.set(this.symbol, {
+        qty: totalQty,
+        avgEntryPrice: totalCost / totalQty,
+      });
+    } else {
+      this.positionEntries.set(this.symbol, {
+        qty,
+        avgEntryPrice: bar.close,
+      });
+    }
+
     // Access portfolio tracker through engine
     const engineWithTracker = this.engine as unknown as {
       portfolioTracker: { processTrade: (trade: ExtendedTrade) => void };
@@ -350,6 +376,26 @@ export class AdvancedSimulationEngine {
    * Execute sell order (fast mode)
    */
   private executeSell(bar: Bar, qty: number): void {
+    // Calculate P&L if we have a position entry
+    const currentEntry = this.positionEntries.get(this.symbol);
+    let tradePnl: number | undefined;
+
+    if (currentEntry && currentEntry.qty > 0) {
+      // Calculate P&L: (sell_price - avg_entry_price) * qty_sold
+      tradePnl = (bar.close - currentEntry.avgEntryPrice) * Math.min(qty, currentEntry.qty);
+
+      // Update position entry
+      const remainingQty = currentEntry.qty - qty;
+      if (remainingQty <= 0) {
+        this.positionEntries.delete(this.symbol);
+      } else {
+        this.positionEntries.set(this.symbol, {
+          qty: remainingQty,
+          avgEntryPrice: currentEntry.avgEntryPrice,
+        });
+      }
+    }
+
     const trade: ExtendedTrade = {
       id: `sim_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
       orderId: `sim_order`,
@@ -358,6 +404,7 @@ export class AdvancedSimulationEngine {
       qty,
       price: bar.close,
       timestamp: bar.timestamp,
+      pnl: tradePnl,
     };
 
     this.simulationTrades.push(trade);
@@ -400,6 +447,23 @@ export class AdvancedSimulationEngine {
 
     this.simulationTrades.push(trade);
 
+    // Track position entry for P&L calculation
+    const currentEntry = this.positionEntries.get(this.symbol);
+    if (currentEntry) {
+      // Average up the position
+      const totalQty = currentEntry.qty + qty;
+      const totalCost = currentEntry.qty * currentEntry.avgEntryPrice + qty * finalPrice;
+      this.positionEntries.set(this.symbol, {
+        qty: totalQty,
+        avgEntryPrice: totalCost / totalQty,
+      });
+    } else {
+      this.positionEntries.set(this.symbol, {
+        qty,
+        avgEntryPrice: finalPrice,
+      });
+    }
+
     // Access portfolio tracker through engine
     const engineWithTracker = this.engine as unknown as {
       portfolioTracker: { processTrade: (trade: ExtendedTrade) => void };
@@ -423,6 +487,27 @@ export class AdvancedSimulationEngine {
     // Use order book price if available, otherwise use slippage-adjusted price
     const finalPrice = result.avgPrice ?? executionPrice;
 
+    // Calculate P&L if we have a position entry
+    const currentEntry = this.positionEntries.get(this.symbol);
+    let tradePnl: number | undefined;
+
+    if (currentEntry && currentEntry.qty > 0) {
+      // Calculate P&L: (sell_price - avg_entry_price) * qty_sold
+      const qtyToSell = Math.min(qty, currentEntry.qty);
+      tradePnl = (finalPrice - currentEntry.avgEntryPrice) * qtyToSell;
+
+      // Update position entry
+      const remainingQty = currentEntry.qty - qty;
+      if (remainingQty <= 0) {
+        this.positionEntries.delete(this.symbol);
+      } else {
+        this.positionEntries.set(this.symbol, {
+          qty: remainingQty,
+          avgEntryPrice: currentEntry.avgEntryPrice,
+        });
+      }
+    }
+
     const trade: ExtendedTrade = {
       id: `adv_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
       orderId: `adv_order`,
@@ -434,6 +519,7 @@ export class AdvancedSimulationEngine {
       slippage,
       marketImpact: slippage * bar.close,
       orderBookDepth: this.orderBookSimulator.getDepth(),
+      pnl: tradePnl,
     };
 
     this.simulationTrades.push(trade);
@@ -501,7 +587,7 @@ export class AdvancedSimulationEngine {
         progress: event.progress,
         portfolio: event.portfolio,
       },
-      "metric"
+      "metric",
     );
   }
 
@@ -529,14 +615,14 @@ export class AdvancedSimulationEngine {
     const metrics = this.calculateAdvancedMetrics();
 
     // Calculate average spread
-    const avgSpread = this.orderBookHistory.length > 0
-      ? this.orderBookHistory.reduce((sum, h) => {
-          const spread = h.depth.asks[0]?.price && h.depth.bids[0]?.price
-            ? h.depth.asks[0].price - h.depth.bids[0].price
-            : 0;
-          return sum + spread;
-        }, 0) / this.orderBookHistory.length
-      : 0;
+    const avgSpread =
+      this.orderBookHistory.length > 0
+        ? this.orderBookHistory.reduce((sum, h) => {
+            const spread =
+              h.depth.asks[0]?.price && h.depth.bids[0]?.price ? h.depth.asks[0].price - h.depth.bids[0].price : 0;
+            return sum + spread;
+          }, 0) / this.orderBookHistory.length
+        : 0;
 
     return {
       trades: this.simulationTrades,
@@ -558,14 +644,122 @@ export class AdvancedSimulationEngine {
     const finalEquity = this.engine.getPortfolio().equity;
     const totalReturn = ((finalEquity - this.initialCash) / this.initialCash) * 100;
 
+    // Calculate max drawdown from equity curve
+    const maxDrawdown = this.calculateMaxDrawdown();
+
+    // Calculate trade-based metrics
+    const tradeMetrics = this.calculateTradeMetrics();
+
+    // Calculate Sharpe ratio from equity curve
+    const sharpeRatio = this.calculateSharpeRatio();
+
     return {
       totalReturn,
       totalTrades: this.simulationTrades.length,
-      winRate: 0,
-      avgWin: 0,
-      avgLoss: 0,
-      maxDrawdown: 0,
+      winRate: tradeMetrics.winRate,
+      avgWin: tradeMetrics.avgWin,
+      avgLoss: tradeMetrics.avgLoss,
+      maxDrawdown,
+      sharpeRatio,
     };
+  }
+
+  /**
+   * Calculate maximum drawdown from equity curve
+   * Returns drawdown as a positive percentage (e.g., 15.5 for 15.5%)
+   */
+  private calculateMaxDrawdown(): number {
+    if (this.equityCurve.length === 0) {
+      return 0;
+    }
+
+    let peak = this.equityCurve[0];
+    let maxDrawdown = 0;
+
+    for (const equity of this.equityCurve) {
+      if (equity > peak) {
+        peak = equity;
+      }
+      const drawdown = ((peak - equity) / peak) * 100;
+      if (drawdown > maxDrawdown) {
+        maxDrawdown = drawdown;
+      }
+    }
+
+    return maxDrawdown;
+  }
+
+  /**
+   * Calculate trade-based metrics: winRate, avgWin, avgLoss
+   */
+  private calculateTradeMetrics(): { winRate: number; avgWin: number; avgLoss: number } {
+    // Get trades with P&L (sell trades that closed positions)
+    const tradesWithPnl = this.simulationTrades.filter((t) => t.pnl !== undefined);
+
+    if (tradesWithPnl.length === 0) {
+      return { winRate: 0, avgWin: 0, avgLoss: 0 };
+    }
+
+    // Separate winning and losing trades
+    const winningTrades = tradesWithPnl.filter((t) => (t.pnl || 0) > 0);
+    const losingTrades = tradesWithPnl.filter((t) => (t.pnl || 0) <= 0);
+
+    // Calculate win rate
+    const winRate = (winningTrades.length / tradesWithPnl.length) * 100;
+
+    // Calculate average win (only for winning trades)
+    const avgWin =
+      winningTrades.length > 0
+        ? winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / winningTrades.length
+        : 0;
+
+    // Calculate average loss (absolute value of losing trades)
+    const avgLoss =
+      losingTrades.length > 0
+        ? Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0) / losingTrades.length)
+        : 0;
+
+    return { winRate, avgWin, avgLoss };
+  }
+
+  /**
+   * Calculate Sharpe ratio from equity curve
+   * Uses daily returns and annualizes with sqrt(252)
+   */
+  private calculateSharpeRatio(): number {
+    if (this.equityCurve.length < 2) {
+      return 0;
+    }
+
+    // Calculate returns between consecutive equity points
+    const returns: number[] = [];
+    for (let i = 1; i < this.equityCurve.length; i++) {
+      const prevEquity = this.equityCurve[i - 1];
+      const currEquity = this.equityCurve[i];
+      if (prevEquity > 0) {
+        returns.push((currEquity - prevEquity) / prevEquity);
+      }
+    }
+
+    if (returns.length === 0) {
+      return 0;
+    }
+
+    // Calculate mean return
+    const meanReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+
+    // Calculate standard deviation
+    const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
+    const stdDev = Math.sqrt(variance);
+
+    if (stdDev === 0) {
+      return 0;
+    }
+
+    // Annualized Sharpe ratio (assuming daily returns, multiply by sqrt(252))
+    const sharpeRatio = (meanReturn / stdDev) * Math.sqrt(252);
+
+    return sharpeRatio;
   }
 
   /**
@@ -575,10 +769,11 @@ export class AdvancedSimulationEngine {
     const baseMetrics = this.calculateMetrics();
 
     // Calculate average slippage
-    const tradesWithSlippage = this.simulationTrades.filter(t => t.slippage !== undefined);
-    const avgSlippage = tradesWithSlippage.length > 0
-      ? tradesWithSlippage.reduce((sum, t) => sum + (t.slippage || 0), 0) / tradesWithSlippage.length
-      : 0;
+    const tradesWithSlippage = this.simulationTrades.filter((t) => t.slippage !== undefined);
+    const avgSlippage =
+      tradesWithSlippage.length > 0
+        ? tradesWithSlippage.reduce((sum, t) => sum + (t.slippage || 0), 0) / tradesWithSlippage.length
+        : 0;
 
     // Calculate total market impact
     const totalMarketImpact = this.simulationTrades.reduce((sum, t) => sum + (t.marketImpact || 0), 0);
