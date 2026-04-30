@@ -18,8 +18,8 @@
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "6.0.2"
+    "@types/bun": "1.3.13",
+    "typescript": "6.0.3"
   },
   "keywords": [
     "hnsw",
@@ -34,5 +34,8 @@
     "type": "git",
     "url": "https://github.com/northriverfence/trading-dashboard.git",
     "directory": "packages/hnswlib-bun"
+  },
+  "engines": {
+    "bun": "1.3.13"
   }
 }
