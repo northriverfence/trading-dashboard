@@ -104,3 +104,18 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+
+## Brain — shared memory, tasks, A2A messaging
+
+This project participates in the workspace-wide **Brain** service for shared
+memory, hierarchical tasks, sessions, knowledge, and agent-to-agent
+messaging. See the canonical guide in
+[`/opt/dev/CLAUDE.md`](/opt/dev/CLAUDE.md#brain--shared-memory-tasks-a2a-messaging)
+(mirrored at [`/opt/dev/AGENTS.md`](/opt/dev/AGENTS.md)).
+
+**Endpoint**: `http://31.220.22.79:3100` (external) · `http://localhost:3100` (local).
+**Use it before** non-trivial work (`search_memory`, `search_knowledge`,
+`list_task_lists`), **during** (`save_task_list`, `mark_task_status`,
+`set_task_priority`, A2A messages), and **after** (`save_memory`,
+`save_knowledge`).
